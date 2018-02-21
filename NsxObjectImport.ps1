@@ -90,15 +90,18 @@ $ServicesExportFile = "$ZipOut\ServicesExport.xml"
 $DfwConfigExportFile = "$ZipOut\DfwConfigExport.xml"
 
 Try {
-	$IpSetHash = [xml](Get-Content $IpSetExportFile)
-	$SecurityGroupHash = [xml](Get-Content $SecurityGroupExportFile)
-	$ServiceGroupHash = [xml](Get-Content $ServiceGroupExportFile)
-	$ServicesHash = [xml](Get-Content $ServicesExportFile)
+	$IpSetHash = Import-CliXml $IpSetExportFile
+	$SecurityGroupHash = Import-CliXml $SecurityGroupExportFile
+	$ServiceGroupHash = Import-CliXml $ServiceGroupExportFile
+	$ServicesHash = Import-CliXml $ServicesExportFile
 	$DfwConfigHash = [xml](Get-Content $DfwConfigExportFile)
 }
 Catch {
 	If ($logon -eq "Yes") { Write-Log "Cannot import $_" }
 	Throw "Unable to import capture bundle content.  $_"
 }
+
+Write-Host "Let do something with $IpSetHash"
+
 
 
