@@ -64,6 +64,8 @@ If ( -not ( test-path $CaptureBundle )) {
 }
 
 $ZipOut = "$PSScriptRoot\NSX2bImported"
+# Empty
+Remove-Item $ZipOut\*.xml
 
 # Unzip to TempDir
 Try {
@@ -88,16 +90,15 @@ $ServicesExportFile = "$ZipOut\ServicesExport.xml"
 $DfwConfigExportFile = "$ZipOut\DfwConfigExport.xml"
 
 Try {
-	$IpSetHash = Import-CliXml $IpSetExportFile
-	$SecurityGroupHash = Import-CliXml $SecurityGroupExportFile
-	$ServiceGroupHash = Import-CliXml $ServiceGroupExportFile
-	$ServicesHash = Import-CliXml $ServicesExportFile
-	$DfwConfigHash = Import-CliXml $DfwConfigExportFile
-
+	$IpSetHash = [xml](Get-Content $IpSetExportFile)
+	$SecurityGroupHash = [xml](Get-Content $SecurityGroupExportFile)
+	$ServiceGroupHash = [xml](Get-Content $ServiceGroupExportFile)
+	$ServicesHash = [xml](Get-Content $ServicesExportFile)
+	$DfwConfigHash = [xml](Get-Content $DfwConfigExportFile)
 }
 Catch {
-	If ($logon -eq "Yes") { Write-Log "Cannot import $CaptureBundle" }
-	Throw "Unable to import capture bundle content.  Is this a valid capture bundle? $_"
+	If ($logon -eq "Yes") { Write-Log "Cannot import $_" }
+	Throw "Unable to import capture bundle content.  $_"
 }
 
 
