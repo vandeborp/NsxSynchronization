@@ -50,7 +50,7 @@ If(!($nsxManager)){
 }
 If ($logon -eq "Yes") { Write-Log "Asked user about NSX manager. Got response: $nsxManager" }
 # User
-$nsxUser = Read-Host ("SSO NSX User to connect and with permissions to add")
+$nsxUser = Read-Host ("SSO NSX User to connect and with permissions to read")
 If(!($nsxUser)){
 	# no user throw error and exit
 	If ($logon -eq "Yes") { Write-Log "[ERROR] Asked user about SSO NSX user. Got no usable response: $nsxUser" }
@@ -78,5 +78,43 @@ $NSXConnection = Connect-NsxServer -vCenterServer $nsxManager -username $nsxUser
 If ($logon -eq "Yes") { Write-Log "Running Export on Source NSXConnection" }
 . ./NsxObjectCapture.ps1 -Connection $NSXConnection
 
+If ($logon -eq "Yes") { Write-Log "Done with Source NSXConnection" }
+
+If ($logon -eq "Yes") { Write-Log "Get Destination NSXConnection" }
+$nsxManagerDst = Read-Host ("Destination vCenter connected to NSX (FQDN/IP)")
+If(!($nsxManagerDst)){
+	# no manager throw error and exit
+	If ($logon -eq "Yes") { Write-Log "[ERROR] Asked user about vCenter/NSX manager. Got no usable response: $nsxManager" }
+	throw "Asked user about vCenter/NSX manager. Got no usable response: $nsxManagerDst"
+}
+If ($logon -eq "Yes") { Write-Log "Asked user about NSX manager. Got response: $nsxManagerDst" }
+# User
+$nsxUserDst = Read-Host ("SSO NSX User to connect and with permissions to add")
+If(!($nsxUserDst)){
+	# no user throw error and exit
+	If ($logon -eq "Yes") { Write-Log "[ERROR] Asked user about SSO NSX user. Got no usable response: $nsxUserDst" }
+	throw "Asked user about SSO NSX User. Got no usable response: $nsxUserDst"
+}
+If ($logon -eq "Yes") { Write-Log "Asked user about SSO NSX User. Got response: $nsxUserDst" }
+# Pass
+# Will not log password
+$nsxPassDst = Read-Host ("SSO user Password to connect")
+If(!($nsxPassDst)){
+	# no Pass throw error and exit
+	If ($logon -eq "Yes") { Write-Log "[ERROR] Asked user about password. Got no usable response: <not logged>" }
+	throw "Asked user about password. Got no usable response: $nsxPassDst"
+}
+If ($logon -eq "Yes") { Write-Log "Asked User about NSX Pass. Got response: <input not logged>" }
+# Trust certificate?
+
+# Open Connection
+# Use as -connection $NSXConnection is the remainder of commands
+If ($logon -eq "Yes") { Write-Log "Opening connection to Destination NSX Manager" }
+$NSXConnectionDst = Connect-NsxServer -vCenterServer $nsxManagerDst -username $nsxUserDst -Password $nsxPassDst #-DefaultConnection:$false
+
+# Use this in connection to NsxObjectImport.ps1
+# Again dot source
+If ($logon -eq "Yes") { Write-Log "Running Import on Destination NSXConnection" }
+. ./NsxObjectImport.ps1 -Connection $NSXConnectionDst -CaptureBundle $ExportFile
 
 #EOF
