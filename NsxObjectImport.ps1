@@ -68,6 +68,7 @@ $ZipOut = "$PSScriptRoot\NSX2bImported"
 Remove-Item $ZipOut\*.xml
 
 # Unzip to TempDir
+If ($logon -eq "Yes") { Write-Log "Unzipping import files" }
 Try {
 	Add-Type -assembly "System.IO.Compression.Filesystem"
 	[System.IO.Compression.ZipFile]::ExtractToDirectory($CaptureBundle, $ZipOut)
@@ -101,7 +102,26 @@ Catch {
 	Throw "Unable to import capture bundle content.  $_"
 }
 
-Write-Host "Let do something with $IpSetHash"
-
+#IP Set
+If ($logon -eq "Yes") { Write-Log "Importing IPSets" }
+ForEach ($IpSetId in $IpSetHash.Keys){
+	[System.Xml.XmlDocument]$IpSetDoc = $IpSetHash.Item($IpSetId)
+	$IPSet = $IpSetDoc.Ipset
+	If ($logon -eq "Yes") { Write-Log "Found IPSet: $IPSet.name with value: $IPSet.value" }
+	$IPSetname = $IPSet.name
+	$IPSetvalue = $IPSet.value
+	# Check if exists, in $Connection
+	If ($logon -eq "Yes") { Write-Log "Checking for existing IpSet" }
+	$itemIpSetfromNSX = Get-NsxIpSet -name $IPSet.name -connection $Connection
+	If (!$itemIpSetfromNSX){
+		# doesnotexist
+		If ($logon -eq "Yes") { Write-Log "[ADDING] IPSet: $IPSetname will be added in NSX skipping" }
+		# New
+		New-NsxIpSet -name "$IPSetname" -IPAddress "$IPSetvalue"
+	}else{
+		#doesexist skip
+		If ($logon -eq "Yes") { Write-Log "[SKIP] IPSet: $IPSetname exists in NSX, skipping...." }
+	}
+}
 
 
