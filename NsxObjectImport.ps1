@@ -168,6 +168,49 @@ If ($logon -eq "Yes") { Write-Log "++    Total Services: $count" }
 If ($logon -eq "Yes") { Write-Log "++    Total Services Skipped: $countskip" }
 If ($logon -eq "Yes") { Write-Log "++    Total Services Add: $countadd" }
 
+$count=0
+$countskip=0
+$countadd=0 
+If ($logon -eq "Yes") { Write-Log "******** Importing ServiceGroups" }
+ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
+	[System.Xml.XmlDocument]$ServiceGrpDoc = $ServiceGroupHash.Item($ServiceGrpId)
+	$ServiceGrp = $ServiceGrpDoc.applicationGroup
+	$ServiceGrpname = $ServiceGrp.name
+	$ServiceGrpdescription = $ServiceGrp.description
+	$ServiceGrpmember = $ServiceGrp.member
+	If ($logon -eq "Yes") { Write-Log "Found ServiceGroup: $ServiceGrpname with Descr: $ServiceGrpdescription" }
+	# Check if exists, in $Connection
+	If ($logon -eq "Yes") { Write-Log "Checking for existing ServiceGroups" }
+	$itemServiceGrpfromNSX = Get-NsxServiceGroup -name "$ServiceGrpname" -connection $Connection
+	If (!$itemServiceGrpfromNSX){
+		# doesnotexist
+		If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $ServiceGrpname will be added in NSX" }
+		# New Add Group and than add members one by one
+		New-NsxServiceGroup -name "$ServiceGrpname"
+		# Got to find ID in destination for each member
+		Foreach ($member in $ServiceGrpmember){
+			$membername = $member.name
+			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $ServiceGrpname add member $membername" }
+			# Get the service id
+			$SvcGrChildId = Get-NsxService -name "$membername"
+			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $membername add memberID $SvcGrChildId" }
+			Get-NsxServiceGroup -name "$ServiceGrpname" | Add-NsxServiceGroupMember $SvcGrChildId		
+		}
+		#New
+		$countadd=$countadd+1
+	}else{
+		#doesexist skip
+		If ($logon -eq "Yes") { Write-Log "[SKIP] Service Group: $Servicegrpname exists in NSX, skipping...." }
+		$countskip=$countskip+1
+	}
+$count=$count+1	
+}
+If ($logon -eq "Yes") { Write-Log "+++++ Finished importing ServiceGroups" }
+If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups: $count" }
+If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups Skipped: $countskip" }
+If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups Add: $countadd" }
+
+
 # Cleanup Unzipped Xml
 Remove-Item $ZipOut\*.xml
 
