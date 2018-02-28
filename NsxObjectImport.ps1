@@ -102,26 +102,72 @@ Catch {
 	Throw "Unable to import capture bundle content.  $_"
 }
 
-#IP Set
-If ($logon -eq "Yes") { Write-Log "Importing IPSets" }
+# IP Set
+$count=0
+$countskip=0
+$countadd=0 
+If ($logon -eq "Yes") { Write-Log "******** Importing IPSets" }
 ForEach ($IpSetId in $IpSetHash.Keys){
 	[System.Xml.XmlDocument]$IpSetDoc = $IpSetHash.Item($IpSetId)
 	$IPSet = $IpSetDoc.Ipset
-	If ($logon -eq "Yes") { Write-Log "Found IPSet: $IPSet.name with value: $IPSet.value" }
 	$IPSetname = $IPSet.name
 	$IPSetvalue = $IPSet.value
+	If ($logon -eq "Yes") { Write-Log "Found IPSet: $IPSetname with value: $IPSetvalue" }
 	# Check if exists, in $Connection
 	If ($logon -eq "Yes") { Write-Log "Checking for existing IpSet" }
-	$itemIpSetfromNSX = Get-NsxIpSet -name $IPSet.name -connection $Connection
+	$itemIpSetfromNSX = Get-NsxIpSet -name "$IPSetname" -connection $Connection
 	If (!$itemIpSetfromNSX){
 		# doesnotexist
-		If ($logon -eq "Yes") { Write-Log "[ADDING] IPSet: $IPSetname will be added in NSX skipping" }
+		If ($logon -eq "Yes") { Write-Log "[ADDING] IPSet: $IPSetname will be added in NSX" }
 		# New
 		New-NsxIpSet -name "$IPSetname" -IPAddress "$IPSetvalue"
+		$countadd=$countadd+1
 	}else{
 		#doesexist skip
 		If ($logon -eq "Yes") { Write-Log "[SKIP] IPSet: $IPSetname exists in NSX, skipping...." }
+		$countskip=$countskip+1
 	}
+$count=$count+1		
 }
+If ($logon -eq "Yes") { Write-Log "+++++ Finished importing IPSets" }
+If ($logon -eq "Yes") { Write-Log "++    Total IPSets: $count" }
+If ($logon -eq "Yes") { Write-Log "++    Total IPSets Skipped: $countskip" }
+If ($logon -eq "Yes") { Write-Log "++    Total IPSets Add: $countadd" }
 
+# Services
+$count=0
+$countskip=0
+$countadd=0 
+If ($logon -eq "Yes") { Write-Log "******** Importing Services" }
+ForEach ($ServicesId in $ServicesHash.Keys){
+	[System.Xml.XmlDocument]$ServicesDoc = $ServicesHash.Item($ServicesId)
+	$Services = $ServicesDoc.application
+	$Servicesname = $Services.name
+	$Servicesdescription = $Services.description
+	$Servicesprotocol = $Services.element.applicationProtocol
+	$Servicesvalue = $Services.element.value
+	If ($logon -eq "Yes") { Write-Log "Found Service: $Servicesname with value: $Servicesvalue (Prot: $Servicesprotocol Descr: $Servicesdescription" }
+	# Check if exists, in $Connection
+	If ($logon -eq "Yes") { Write-Log "Checking for existing Services" }
+	$itemServicesfromNSX = Get-NsxService -name "$Servicesname" -connection $Connection
+	If (!$itemServicesfromNSX){
+		# doesnotexist
+		If ($logon -eq "Yes") { Write-Log "[ADDING] Services: $Servicesname will be added in NSX" }
+		# New
+		New-NsxService -Name "$Servicesname" -Protocol "$Servicesprotocol" -port "$Servicesvalue" -Description "$Servicesdescription"
+		$countadd=$countadd+1
+	}else{
+		#doesexist skip
+		If ($logon -eq "Yes") { Write-Log "[SKIP] Services: $Servicesname exists in NSX, skipping...." }
+		$countskip=$countskip+1
+	}
+$count=$count+1	
+}
+If ($logon -eq "Yes") { Write-Log "+++++ Finished importing Services" }
+If ($logon -eq "Yes") { Write-Log "++    Total Services: $count" }
+If ($logon -eq "Yes") { Write-Log "++    Total Services Skipped: $countskip" }
+If ($logon -eq "Yes") { Write-Log "++    Total Services Add: $countadd" }
+
+# Cleanup Unzipped Xml
+Remove-Item $ZipOut\*.xml
 
