@@ -3,7 +3,7 @@ Synchronization between NSX instances
 
 This script takes input from the user to synchronize a source and destination NSX Manager with DFW rules to be specified in a section.
 
-This version currenty imports IPSets and their values
+This version currenty imports IPSets and their values, Services, Servicegroups, Securitygroups and DFW sections (and rules) if the user agrees to importing.
 
 DEPENDENCIES
   VMware.PowerCLI
