@@ -172,6 +172,7 @@ $count=0
 $countskip=0
 $countadd=0 
 If ($logon -eq "Yes") { Write-Log "******** Importing ServiceGroups" }
+# Errors are shown on screen when importing servicegroups, however groups are imported. Surpressing for now
 ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
 	[System.Xml.XmlDocument]$ServiceGrpDoc = $ServiceGroupHash.Item($ServiceGrpId)
 	$ServiceGrp = $ServiceGrpDoc.applicationGroup
@@ -192,9 +193,9 @@ ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
 			$membername = $member.name
 			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $ServiceGrpname add member $membername" }
 			# Get the service id
-			$SvcGrChildId = Get-NsxService -name "$membername"
+			$SvcGrChildId = Get-NsxService -name "$membername" -ErrorAction SilentlyContinue
 			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $membername add memberID $SvcGrChildId" }
-			Get-NsxServiceGroup -name "$ServiceGrpname" | Add-NsxServiceGroupMember $SvcGrChildId		
+			Get-NsxServiceGroup -name "$ServiceGrpname" | Add-NsxServiceGroupMember "$SvcGrChildId" -ErrorAction SilentlyContinue	
 		}
 		#New
 		$countadd=$countadd+1
@@ -210,7 +211,48 @@ If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups: $count" }
 If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups Skipped: $countskip" }
 If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups Add: $countadd" }
 
+$count=0
+$countskip=0
+$countadd=0 
+If ($logon -eq "Yes") { Write-Log "******** Importing Security Groups" }
+# Errors are shown on screen when importing group members, however groups are imported. Surpressing for now
+# Only Synchronize IP Set Members
+ForEach ($SecurityGrpId in $SecurityGroupHash.Keys){
+	[System.Xml.XmlDocument]$SecurityGrpDoc = $SecurityGroupHash.Item($SecurityGrpId)
+	$SecurityGrp = $SecurityGrpDoc.securitygroup
+	$SecurityGrpname = $SecurityGrp.name
+	$SecurityGrpdescription = $SecurityGrp.description
+	$SecurityGrpmember = $SecurityGrp.member
+	If ($logon -eq "Yes") { Write-Log "Found Security Group: $SecurityGrpname with Descr: $SecurityGrpdescription" }
+	# Check if exists, in $Connection
+	If ($logon -eq "Yes") { Write-Log "Checking for existing Security Groups" }
+	$itemSecurityGrpfromNSX = Get-NsxSecurityGroup -name "$SecurityGrpname" -connection $Connection
+	If (!$itemSecurityGrpfromNSX){
+		# doesnotexist
+		If ($logon -eq "Yes") { Write-Log "[ADDING] Security Group: $SecurityGrpname will be added in NSX" }
+		# New Add Group and than add members one by one
+		New-NsxSecurityGroup -name "$SecurityGrpname"
+		# Got to find ID in destination for each member
+		Foreach ($member in $SecurityGrpmember){
+			$membername = $member.name
+			If ($logon -eq "Yes") { Write-Log "[ADDING] Security Group: $SecurityGrpname add member $membername" }
+			Get-NsxSecurityGroup -name "$SecurityGrpname" | Add-NsxSecurityGroupMember -Member (Get-NsxIPSet -name "$membername" -ErrorAction SilentlyContinue) -ErrorAction SilentlyContinue	
+		}
+		#New
+		$countadd=$countadd+1
+	}else{
+		#doesexist skip
+		If ($logon -eq "Yes") { Write-Log "[SKIP] Security Group: $SecurityGrpname exists in NSX, skipping...." }
+		$countskip=$countskip+1
+	}
+$count=$count+1	
+}
+If ($logon -eq "Yes") { Write-Log "+++++ Finished importing Security Groups" }
+If ($logon -eq "Yes") { Write-Log "++    Total Security Groups: $count" }
+If ($logon -eq "Yes") { Write-Log "++    Total Security Groups Skipped: $countskip" }
+If ($logon -eq "Yes") { Write-Log "++    Total Security Groups Add: $countadd" }
 
 # Cleanup Unzipped Xml
 Remove-Item $ZipOut\*.xml
 
+# EOF
