@@ -252,6 +252,113 @@ If ($logon -eq "Yes") { Write-Log "++    Total Security Groups: $count" }
 If ($logon -eq "Yes") { Write-Log "++    Total Security Groups Skipped: $countskip" }
 If ($logon -eq "Yes") { Write-Log "++    Total Security Groups Add: $countadd" }
 
+
+$count=0
+$countskip=0
+$countadd=0 
+If ($logon -eq "Yes") { Write-Log "******** Importing DFW Rules per Section" }
+# Let User decide which section to import
+ForEach ($dfwsection in $DfwConfigHash.firewallConfiguration.layer3Sections.section){
+		Write-Host -foreground green "Section name " $dfwsection.name
+		If ($logon -eq "Yes") { Write-Log "Asking user for import of this section" }
+		$importdfwsection = Read-Host("Import this section? (Y/N)")
+		If($importdfwsection -eq "Y"){
+			If ($logon -eq "Yes") { Write-Log "User wants to import $DFWSecname" }
+			# Check if Section already exists
+			$DFWSecName = $dfwsection.name
+			$itemFWSecfromNSX = Get-NSXFirewallSection -name "$DFWSecName"
+			If (!$itemFWSecfromNSX) { 
+				# Does not exist
+				# Create Section
+				If ($logon -eq "Yes") { Write-Log "Section does not exist, adding $DFWSecname" }
+				New-NsxFirewallSection -name "$DFWSecName"
+			}
+			ForEach ($rule in $dfwsection.rule){
+				$Rulename = $rule.name
+				$Ruleaction = $rule.action
+				$Rulesource = $rule.sources.source.name
+				$Rulesourcecount = $Rulesource.count
+				$Rulesourcevalue = $rule.sources.source.value
+				$Rulesourcetype = $rule.sources.source.type
+				$Ruledest = $rule.destinations.destination.name
+				$Ruledestcount = $Ruledest.count
+				$Ruledestvalue = $rule.destinations.destination.value
+				$Ruledesttype = $rule.destinations.destination.type
+				$Rulesvc = $rule.services.service.name
+				$Rulesvccount = $Rulesvc.count
+				$Rulesvcvalue = $rule.services.service.value
+				$Rulesvctype = $rule.services.service.type
+				
+				# Type can be IPSet, SecurityGroup, Application (Service) or ApplicationGroup (ServiceGroup)
+				# Depending on the type use the correct get
+				
+				# If services is empty then ANY
+				If(!$Rulesvc){ 
+					$Rulesvc = "ANY" 
+					$Rulesvcvalue = "ANY" 
+					$Rulesvctype = "ANY"
+					If ($logon -eq "Yes") { Write-Log "Servicetype undefined, assuming ANY" }
+				}	
+				
+				$itemFWRuleSrcID = @()
+				For ($i = 0; $i -lt $Rulesourcecount; $i++){
+					ForEach($itemRuleSourceSplit in $Rulesource){
+						$SourceArgumentStr = $itemRuleSourceSplit
+						If($Rulesourcetype -eq "SecurityGroup"){
+							$itemFWRuleSrcID += Get-NsxSecurityGroup -Name $SourceArgumentStr
+						}
+						If($Rulesourcetype -eq "IPSet"){
+							$itemFWRuleSrcID += Get-NsxIPSet -Name $SourceArgumentStr
+						}
+					}
+				}
+				$itemFWRuleDestID = @()
+				For ($z = 0; $z -lt $Ruledestcount; $z++){
+					 ForEach($itemRuleDestSplit in $Ruledest){
+						$DestArgumentStr = $itemRuleDestSplit
+						If($Ruledesttype -eq "SecurityGroup"){
+							$itemFWRuleDestID += Get-NsxSecurityGroup -Name $DestArgumentStr
+						}
+						If($Ruledesttype -eq "IPSet"){
+							$itemFWRuleDestID += Get-NsxIPSet -Name $DestArgumentStr
+						}
+					}
+				}	
+				$itemFWRuleSvcID = @()
+				For ($y = 0; $y -lt $Rulesvccount; $y++){
+					 ForEach($itemRuleSvcSplit in $Rulesvc){
+						$SvcArgumentStr = $itemRuleSvcSplit
+						If($Rulesvctype -eq "Application"){
+							$itemFWRuleSvcID += Get-NsxService -Name $SvcArgumentStr
+						}
+						If($Rulesvctype -eq "ApplicationGroup"){
+							$itemFWRuleSvcID += Get-NsxServiceGroup -Name $SvcArgumentStr
+						}
+					}
+				}	
+				
+				$SrcArgument = $itemFWRuleSrcID
+				$DestArgument = $itemFWRuleDestID
+				$SvcArgument = $itemFWRuleSvcID
+				
+				If ($logon -eq "Yes") { Write-Log "Adding $Rulename to $DFWSecname" }
+				
+				Get-NsxFirewallSection -name "$DFWSecName" | New-NsxFirewallRule -Name "$Rulename" -Action "$Ruleaction" -Source $SrcArgument -Destination $DestArgument -Service $SvcArgument
+				
+			}
+		}else{
+			If ($logon -eq "Yes") { Write-Log "User requested to skip $DFWSecname" }
+			Write-Host "Not importing"
+		}
+}
+
+If ($logon -eq "Yes") { Write-Log "+++++ Finished importing DFW Rules" }
+If ($logon -eq "Yes") { Write-Log "++    Total DFW Sections: $count" }
+If ($logon -eq "Yes") { Write-Log "++    Total DFW Sections Skipped: $countskip" }
+If ($logon -eq "Yes") { Write-Log "++    Total DFW Sections Add: $countadd" }
+
+
+
 # Cleanup Unzipped Xml
 Remove-Item $ZipOut\*.xml
 
