@@ -341,10 +341,14 @@ ForEach ($dfwsection in $DfwConfigHash.firewallConfiguration.layer3Sections.sect
 				$DestArgument = $itemFWRuleDestID
 				$SvcArgument = $itemFWRuleSvcID
 				
-				If ($logon -eq "Yes") { Write-Log "Adding $Rulename to $DFWSecname" }
-				
-				Get-NsxFirewallSection -name "$DFWSecName" | New-NsxFirewallRule -Name "$Rulename" -Action "$Ruleaction" -Source $SrcArgument -Destination $DestArgument -Service $SvcArgument
-				
+				# Last check if rule already exists
+				$itemFWRulefromNSX = Get-NsxFirewallRule -name "$Rulename" 
+				If (!$itemFWRulefromNSX) { 
+					If ($logon -eq "Yes") { Write-Log "Adding $Rulename to $DFWSecname" }
+					Get-NsxFirewallSection -name "$DFWSecName" | New-NsxFirewallRule -Name "$Rulename" -Action "$Ruleaction" -Source $SrcArgument -Destination $DestArgument -Service $SvcArgument
+				}else{
+					If ($logon -eq "Yes") { Write-Log "[WARNING] Rule $Rulename exists in destination, skipping" }
+				}
 			}
 		}else{
 			If ($logon -eq "Yes") { Write-Log "User requested to skip $DFWSecname" }
