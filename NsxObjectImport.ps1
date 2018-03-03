@@ -329,10 +329,10 @@ ForEach ($dfwsection in $DfwConfigHash.firewallConfiguration.layer3Sections.sect
 					 ForEach($itemRuleSvcSplit in $Rulesvc){
 						$SvcArgumentStr = $itemRuleSvcSplit
 						If($Rulesvctype -eq "Application"){
-							$itemFWRuleSvcID += Get-NsxService -Name $SvcArgumentStr
+							$itemFWRuleSvcID += Get-NsxService -Name $SvcArgumentStr | Where-Object isUniversal -eq 'false'
 						}
 						If($Rulesvctype -eq "ApplicationGroup"){
-							$itemFWRuleSvcID += Get-NsxServiceGroup -Name $SvcArgumentStr
+							$itemFWRuleSvcID += Get-NsxServiceGroup -Name $SvcArgumentStr | Where-Object isUniversal -eq 'false'
 						}
 					}
 				}	
