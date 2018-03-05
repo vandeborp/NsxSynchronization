@@ -263,15 +263,16 @@ ForEach ($dfwsection in $DfwConfigHash.firewallConfiguration.layer3Sections.sect
 		If ($logon -eq "Yes") { Write-Log "Asking user for import of this section" }
 		$importdfwsection = Read-Host("Import this section? (Y/N)")
 		If($importdfwsection -eq "Y"){
-			If ($logon -eq "Yes") { Write-Log "User wants to import $DFWSecname" }
 			# Check if Section already exists
 			$DFWSecName = $dfwsection.name
+			If ($logon -eq "Yes") { Write-Log "User wants to import $DFWSecName" }
 			$itemFWSecfromNSX = Get-NSXFirewallSection -name "$DFWSecName"
 			If (!$itemFWSecfromNSX) { 
 				# Does not exist
 				# Create Section
-				If ($logon -eq "Yes") { Write-Log "Section does not exist, adding $DFWSecname" }
+				If ($logon -eq "Yes") { Write-Log "Section does not exist, adding $DFWSecName" }
 				New-NsxFirewallSection -name "$DFWSecName"
+				$countadd=$countadd+1
 			}
 			ForEach ($rule in $dfwsection.rule){
 				$Rulename = $rule.name
@@ -352,8 +353,10 @@ ForEach ($dfwsection in $DfwConfigHash.firewallConfiguration.layer3Sections.sect
 			}
 		}else{
 			If ($logon -eq "Yes") { Write-Log "User requested to skip $DFWSecname" }
-			Write-Host "Not importing"
+			Write-Host "Not importing $DFWSecname"
+			$countskip=$countskip+1
 		}
+$count=$count+1
 }
 
 If ($logon -eq "Yes") { Write-Log "+++++ Finished importing DFW Rules" }
