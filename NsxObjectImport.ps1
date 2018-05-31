@@ -192,14 +192,18 @@ ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
 		Foreach ($member in $ServiceGrpmember){
 			$membername = $member.name
 			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $ServiceGrpname add member $membername" }
-			# Get the service id
-			$SvcGrChildId = Get-NsxService -name "$membername" -ErrorAction SilentlyContinue
+			# Get the member id - either a service or a service group
+			if ($member.objectTypeName -eq "Application") {
+			    $SvcGrChildId = Get-NsxService -name "$membername" -ErrorAction SilentlyContinue -connection $Connection
+			} else {
+			    $SvcGrChildId = Get-NsxServiceGroup -name "$membername" -ErrorAction SilentlyContinue -connection $Connection
+			}
 			If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $membername add memberID $SvcGrChildId" }
-			Get-NsxServiceGroup -name "$ServiceGrpname" | Add-NsxServiceGroupMember "$SvcGrChildId" -ErrorAction SilentlyContinue	
-		}
-		#New
-		$countadd=$countadd+1
-	}else{
+			Get-NsxServiceGroup -name "$ServiceGrpname" -connection $Connection | Add-NsxServiceGroupMember -Member $SvcGrChildId -ErrorAction SilentlyContinue -connection $Connection
+        	}
+        	#New
+        	$countadd=$countadd+1
+        }else{
 		#doesexist skip
 		If ($logon -eq "Yes") { Write-Log "[SKIP] Service Group: $Servicegrpname exists in NSX, skipping...." }
 		$countskip=$countskip+1
