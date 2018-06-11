@@ -106,6 +106,7 @@ Catch {
 $count=0
 $countskip=0
 $countadd=0 
+$NSXIPSets = Get-NsxIpSet -connection $Connection
 If ($logon -eq "Yes") { Write-Log "******** Importing IPSets" }
 ForEach ($IpSetId in $IpSetHash.Keys){
 	[System.Xml.XmlDocument]$IpSetDoc = $IpSetHash.Item($IpSetId)
@@ -115,8 +116,8 @@ ForEach ($IpSetId in $IpSetHash.Keys){
 	If ($logon -eq "Yes") { Write-Log "Found IPSet: $IPSetname with value: $IPSetvalue" }
 	# Check if exists, in $Connection
 	If ($logon -eq "Yes") { Write-Log "Checking for existing IpSet" }
-	$itemIpSetfromNSX = Get-NsxIpSet -name "$IPSetname" -connection $Connection
-	If (!$itemIpSetfromNSX){
+	$itemIpSetfromNSX = $NSXIPSets | Where {$_.name -eq $IPSetname} | measure
+	If ($itemIpSetfromNSX.count -lt 1){
 		# doesnotexist
 		If ($logon -eq "Yes") { Write-Log "[ADDING] IPSet: $IPSetname will be added in NSX" }
 		# New
@@ -138,6 +139,7 @@ If ($logon -eq "Yes") { Write-Log "++    Total IPSets Add: $countadd" }
 $count=0
 $countskip=0
 $countadd=0 
+$NSXServices = Get-NsxService -connection $Connection
 If ($logon -eq "Yes") { Write-Log "******** Importing Services" }
 ForEach ($ServicesId in $ServicesHash.Keys){
 	[System.Xml.XmlDocument]$ServicesDoc = $ServicesHash.Item($ServicesId)
@@ -149,8 +151,8 @@ ForEach ($ServicesId in $ServicesHash.Keys){
 	If ($logon -eq "Yes") { Write-Log "Found Service: $Servicesname with value: $Servicesvalue (Prot: $Servicesprotocol Descr: $Servicesdescription" }
 	# Check if exists, in $Connection
 	If ($logon -eq "Yes") { Write-Log "Checking for existing Services" }
-	$itemServicesfromNSX = Get-NsxService -name "$Servicesname" -connection $Connection
-	If (!$itemServicesfromNSX){
+	$itemServicesfromNSX = $NSXServices | Where {$_.name -eq $Servicesname} | measure
+	If ($itemServicesfromNSX.count -lt 1){
 		# doesnotexist
 		If ($logon -eq "Yes") { Write-Log "[ADDING] Services: $Servicesname will be added in NSX" }
 		# New
@@ -171,6 +173,7 @@ If ($logon -eq "Yes") { Write-Log "++    Total Services Add: $countadd" }
 $count=0
 $countskip=0
 $countadd=0 
+$NSXServiceGroups = Get-NsxServiceGroup -connection $Connection
 If ($logon -eq "Yes") { Write-Log "******** Importing ServiceGroups" }
 # Errors are shown on screen when importing servicegroups, however groups are imported. Surpressing for now
 ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
@@ -182,8 +185,8 @@ ForEach ($ServiceGrpId in $ServiceGroupHash.Keys){
 	If ($logon -eq "Yes") { Write-Log "Found ServiceGroup: $ServiceGrpname with Descr: $ServiceGrpdescription" }
 	# Check if exists, in $Connection
 	If ($logon -eq "Yes") { Write-Log "Checking for existing ServiceGroups" }
-	$itemServiceGrpfromNSX = Get-NsxServiceGroup -name "$ServiceGrpname" -connection $Connection
-	If (!$itemServiceGrpfromNSX){
+	$itemServiceGrpfromNSX = $NSXServiceGroups | Where {$_.name -eq $ServiceGrpname} | measure
+	If ($itemServiceGrpfromNSX.count -lt 1){
 		# doesnotexist
 		If ($logon -eq "Yes") { Write-Log "[ADDING] ServiceGroup: $ServiceGrpname will be added in NSX" }
 		# New Add Group and than add members one by one
@@ -218,6 +221,7 @@ If ($logon -eq "Yes") { Write-Log "++    Total ServiceGroups Add: $countadd" }
 $count=0
 $countskip=0
 $countadd=0 
+$NSXSecurityGroups = Get-NsxSecurityGroup -connection $Connection
 If ($logon -eq "Yes") { Write-Log "******** Importing Security Groups" }
 # Errors are shown on screen when importing group members, however groups are imported. Surpressing for now
 # Only Synchronize IP Set Members
@@ -227,20 +231,21 @@ ForEach ($SecurityGrpId in $SecurityGroupHash.Keys){
 	$SecurityGrpname = $SecurityGrp.name
 	$SecurityGrpdescription = $SecurityGrp.description
 	$SecurityGrpmember = $SecurityGrp.member
+    $currentSecurityGroup = $null
 	If ($logon -eq "Yes") { Write-Log "Found Security Group: $SecurityGrpname with Descr: $SecurityGrpdescription" }
 	# Check if exists, in $Connection
 	If ($logon -eq "Yes") { Write-Log "Checking for existing Security Groups" }
-	$itemSecurityGrpfromNSX = Get-NsxSecurityGroup -name "$SecurityGrpname" -connection $Connection
-	If (!$itemSecurityGrpfromNSX){
+	$itemSecurityGrpfromNSX = $NSXSecurityGroups | Where {$_.name -eq $SecurityGrpname} | measure
+	If ($itemSecurityGrpfromNSX.count -lt 1){
 		# doesnotexist
 		If ($logon -eq "Yes") { Write-Log "[ADDING] Security Group: $SecurityGrpname will be added in NSX" }
 		# New Add Group and than add members one by one
-		New-NsxSecurityGroup -name "$SecurityGrpname"
+		$currentSecurityGroup = New-NsxSecurityGroup -name "$SecurityGrpname" -connection $Connection
 		# Got to find ID in destination for each member
 		Foreach ($member in $SecurityGrpmember){
 			$membername = $member.name
 			If ($logon -eq "Yes") { Write-Log "[ADDING] Security Group: $SecurityGrpname add member $membername" }
-			Get-NsxSecurityGroup -name "$SecurityGrpname" | Add-NsxSecurityGroupMember -Member (Get-NsxIPSet -name "$membername" -ErrorAction SilentlyContinue) -ErrorAction SilentlyContinue	
+			$currentSecurityGroup | Add-NsxSecurityGroupMember -Member (Get-NsxIPSet -name "$membername" -ErrorAction SilentlyContinue) -ErrorAction SilentlyContinue -connection $Connection	
 		}
 		#New
 		$countadd=$countadd+1
